@@ -37,12 +37,14 @@ LOG_MODULE_REGISTER(flash_nrf);
 
 #define SOC_NV_FLASH_NODE DT_INST(0, soc_nv_flash)
 
-#if CONFIG_ARM_NONSECURE_FIRMWARE && CONFIG_SPM
+#if defined(CONFIG_ARM_NONSECURE_FIRMWARE)
+#if defined(CONFIG_SPM_SERVICE_READ) && defined(USE_PARTITION_MANAGER) && USE_PARTITION_MANAGER
 #include <secure_services.h>
-#if USE_PARTITION_MANAGER
 #include <pm_config.h>
-#endif /* USE_PARTITION_MANAGER */
-#endif /* CONFIG_ARM_NONSECURE_FIRMWARE  && CONFIG_SPM */
+#elif defined(CONFIG_BUILD_WITH_TFM)
+#include <tfm/tfm_ioctl_api.h>
+#endif
+#endif /* defined(CONFIG_ARM_NONSECURE_FIRMWARE) */
 
 #ifndef CONFIG_SOC_FLASH_NRF_RADIO_SYNC_NONE
 #define FLASH_SLOT_WRITE     7500
@@ -153,12 +155,24 @@ static int flash_nrf_read(const struct device *dev, off_t addr,
 		return 0;
 	}
 
-#if CONFIG_ARM_NONSECURE_FIRMWARE && CONFIG_SPM && USE_PARTITION_MANAGER \
-	&& CONFIG_SPM_SECURE_SERVICES
+#if defined(CONFIG_ARM_NONSECURE_FIRMWARE)
+#if defined(CONFIG_SPM_SERVICE_READ) && defined(USE_PARTITION_MANAGER) && USE_PARTITION_MANAGER
 	if (addr < PM_APP_ADDRESS) {
 		return spm_request_read(data, addr, len);
 	}
+#elif defined(CONFIG_BUILD_WITH_TFM)
+	enum tfm_platform_err_t tfmError;
+	uint32_t tfmServiceError;
+
+	tfmError = tfm_platform_mem_read(data, addr, len, &tfmServiceError);
+
+	if (tfmError != TFM_PLATFORM_ERR_SUCCESS || tfmServiceError) {
+		return -EPERM;
+	}
+
+	return 0;
 #endif
+#endif /* defined(CONFIG_ARM_NONSECURE_FIRMWARE) */
 
 	memcpy(data, (void *)addr, len);
 
