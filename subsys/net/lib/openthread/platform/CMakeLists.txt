@@ -12,6 +12,7 @@ zephyr_library_sources(
   )
 
 zephyr_library_sources_ifdef(CONFIG_OPENTHREAD_DIAG diag.c)
+zephyr_library_sources_ifdef(CONFIG_OPENTHREAD_PSA_CRYPTO_ENABLE crypto.c)
 zephyr_library_sources_ifdef(CONFIG_OPENTHREAD_COPROCESSOR uart.c)
 zephyr_library_sources_ifdef(CONFIG_OPENTHREAD_SHELL shell.c)
 zephyr_library_sources_ifdef(CONFIG_OPENTHREAD_EXTERNAL_HEAP memory.c)

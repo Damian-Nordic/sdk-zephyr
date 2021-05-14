@@ -286,4 +286,11 @@ config OPENTHREAD_MAC_SOFTWARE_CSMA_BACKOFF_ENABLE
 	  Set y to enable software CSMA backoff. The option can be disabled if
 	  the radio has hardware support for this feature (IEEE802154_HW_CSMA).
 
+config OPENTHREAD_PSA_CRYPTO_ENABLE
+	bool "Enable PSA crypto API"
+	default y if BUILD_WITH_TFM
+	help
+	  Set y to use PSA crypto API instead of mbedTLS for cryptographic
+	  operations in OpenThread.
+
 endif # NET_L2_OPENTHREAD
