@@ -14,6 +14,7 @@
 #include <sys/util.h>
 #include <sys/errno_private.h>
 #include <sys/libc-hooks.h>
+#include <sys/libc_heap_listener.h>
 #include <syscall_handler.h>
 #include <app_memory/app_memdomain.h>
 #include <init.h>
@@ -291,6 +292,12 @@ void *_sbrk(intptr_t count)
 	if ((heap_sz + count) < MAX_HEAP_SIZE) {
 		heap_sz += count;
 		ret = ptr;
+
+#ifdef CONFIG_NEWLIB_LIBC_HEAP_LISTENER
+		STRUCT_SECTION_FOREACH(z_libc_heap_listener, heap_listener) {
+			heap_listener->heap_resized(ptr, (char *)ptr + count);
+		}
+#endif
 	} else {
 		ret = (void *)-1;
 	}

@@ -172,6 +172,10 @@
 	} GROUP_LINK_IN(ROMABLE_REGION)
 #endif /* CONFIG_PCIE */
 
+#if defined(CONFIG_LIBC_HEAP_LISTENER)
+	ITERABLE_SECTION_ROM(z_libc_heap_listener, 4)
+#endif
+
 	SECTION_DATA_PROLOGUE(log_strings_sections,,)
 	{
 		__log_strings_start = .;

@@ -156,6 +156,10 @@ if(CONFIG_PCIE)
   zephyr_linker_section_configure(SECTION irq_alloc INPUT ".irq_alloc*" KEEP SORT NAME)
 endif()
 
+if(CONFIG_LIBC_HEAP_LISTENER)
+  zephyr_iterable_section(NAME z_libc_heap_listener KVMA RAM_REGION GROUP RODATA_REGION SUBALIGN 4)
+endif()
+
 zephyr_linker_section(NAME log_strings KVMA RAM_REGION GROUP RODATA_REGION NOINPUT ${XIP_ALIGN_WITH_INPUT})
 zephyr_linker_section_configure(SECTION log_strings INPUT ".log_strings*" KEEP SORT NAME)
 

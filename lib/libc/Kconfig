@@ -15,6 +15,12 @@ config SUPPORT_MINIMAL_LIBC
 	bool
 	default y
 
+config LIBC_HEAP_LISTENER
+	bool "Enable libc heap event listener"
+	help
+	  Make it possible to register a listener that will be notified of certain
+	  events related to the libc heap usage, such as the heap resize.
+
 choice LIBC_IMPLEMENTATION
 	prompt "C Library Implementation"
 	default EXTERNAL_LIBC if NATIVE_APPLICATION
@@ -109,6 +115,13 @@ config NEWLIB_LIBC_FLOAT_SCANF
 	help
 	  Build with floating point scanf enabled. This will increase the size of
 	  the image.
+
+config NEWLIB_LIBC_HEAP_LISTENER
+	bool "Use libc heap event listener in newlib hooks"
+	select LIBC_HEAP_LISTENER
+	help
+	  Notify registered libc heap listeners upon certain events related to the
+	  newlib libc heap usage, such as the heap resize.
 
 endif # NEWLIB_LIBC
 
