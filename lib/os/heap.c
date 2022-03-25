@@ -265,6 +265,7 @@ void *sys_heap_alloc(struct sys_heap *heap, size_t bytes)
 	set_chunk_used(h, c, true);
 #ifdef CONFIG_SYS_HEAP_RUNTIME_STATS
 	h->allocated_bytes += chunksz_to_bytes(h, chunk_size(h, c));
+	h->max_allocated_bytes = MAX(h->max_allocated_bytes, h->allocated_bytes);
 #endif
 	return chunk_mem(h, c);
 }
@@ -335,6 +336,7 @@ void *sys_heap_aligned_alloc(struct sys_heap *heap, size_t align, size_t bytes)
 	set_chunk_used(h, c, true);
 #ifdef CONFIG_SYS_HEAP_RUNTIME_STATS
 	h->allocated_bytes += chunksz_to_bytes(h, chunk_size(h, c));
+	h->max_allocated_bytes = MAX(h->max_allocated_bytes, h->allocated_bytes);
 #endif
 	return mem;
 }
@@ -386,6 +388,7 @@ void *sys_heap_aligned_realloc(struct sys_heap *heap, void *ptr,
 
 #ifdef CONFIG_SYS_HEAP_RUNTIME_STATS
 		h->allocated_bytes += split_size * CHUNK_UNIT;
+		h->max_allocated_bytes = MAX(h->max_allocated_bytes, h->allocated_bytes);
 #endif
 
 		free_list_remove(h, rc);
@@ -444,6 +447,7 @@ void sys_heap_init(struct sys_heap *heap, void *mem, size_t bytes)
 #ifdef CONFIG_SYS_HEAP_RUNTIME_STATS
 	h->free_bytes = 0;
 	h->allocated_bytes = 0;
+	h->max_allocated_bytes = 0;
 #endif
 
 	int nb_buckets = bucket_idx(h, heap_sz) + 1;
