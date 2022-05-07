@@ -12,6 +12,7 @@
 #include "settings/settings_nvs.h"
 #include "settings_priv.h"
 #include <storage/flash_map.h>
+#include <settings/settings_profiler.h>
 
 #include <logging/log.h>
 LOG_MODULE_DECLARE(settings, CONFIG_SETTINGS_LOG_LEVEL);
@@ -77,6 +78,8 @@ static int settings_nvs_load(struct settings_store *cs,
 
 	name_id = cf->last_name_id + 1;
 
+	int64_t start_ticks = k_uptime_ticks();
+
 	while (1) {
 
 		name_id--;
@@ -88,9 +91,13 @@ static int settings_nvs_load(struct settings_store *cs,
 		 * entries one for the setting's name and one with the
 		 * setting's value.
 		 */
+		settings_timer_start();
 		rc1 = nvs_read(&cf->cf_nvs, name_id, &name, sizeof(name));
+		settings_timer_end(TM_NVS_KEY_READ, true);
+
 		rc2 = nvs_read(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET,
 			       &buf, sizeof(buf));
+		settings_timer_end(TM_NVS_VALUE_FIND, false);
 
 		if ((rc1 <= 0) && (rc2 <= 0)) {
 			continue;
@@ -117,14 +124,20 @@ static int settings_nvs_load(struct settings_store *cs,
 		read_fn_arg.fs = &cf->cf_nvs;
 		read_fn_arg.id = name_id + NVS_NAME_ID_OFFSET;
 
+		settings_timer_start();
 		ret = settings_call_set_handler(
 			name, rc2,
 			settings_nvs_read_fn, &read_fn_arg,
 			(void *)arg);
+		settings_timer_end(TM_NVS_VALUE_READ, false);
 		if (ret) {
 			break;
 		}
 	}
+
+	settings_timer_reference = start_ticks;
+	settings_timer_end(TM_READ, false);
+
 	return ret;
 }
 

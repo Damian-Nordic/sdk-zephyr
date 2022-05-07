@@ -12,6 +12,7 @@
 #include <kernel.h>
 
 #include "settings/settings.h"
+#include "settings/settings_profiler.h"
 #include "settings_priv.h"
 #include <zephyr/types.h>
 
@@ -270,3 +271,7 @@ int settings_commit_subtree(const char *subtree)
 
 	return rc;
 }
+
+uint32_t settings_counter[CNT_MAX];
+int64_t settings_timer_reference;
+struct settings_timer settings_timer[TM_MAX];

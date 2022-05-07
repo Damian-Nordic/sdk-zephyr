@@ -12,6 +12,7 @@
 #include <fs/nvs.h>
 #include <sys/crc.h>
 #include "nvs_priv.h"
+#include <settings/settings_profiler.h>
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(fs_nvs, CONFIG_NVS_LOG_LEVEL);
@@ -1062,6 +1063,7 @@ ssize_t nvs_read_hist(struct nvs_fs *fs, uint16_t id, void *data, size_t len,
 
 	while (cnt_his <= cnt) {
 		rd_addr = wlk_addr;
+		settings_counter_inc(CNT_NVS_ATE_READ);
 		rc = nvs_prev_ate(fs, &wlk_addr, &wlk_ate);
 		if (rc) {
 			goto err;

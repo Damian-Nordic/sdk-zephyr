@@ -5,6 +5,7 @@
  */
 
 #include <settings/settings.h>
+#include <settings/settings_profiler.h>
 #include <shell/shell.h>
 #include <sys/util.h>
 #include <toolchain.h>
@@ -148,11 +149,37 @@ static int cmd_delete(const struct shell *shell_ptr, size_t argc, char *argv[])
 	return 0;
 }
 
+static int cmd_stat(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	for (int i = 0; i < CNT_MAX; i++) {
+		shell_print(shell_ptr, "%s: %u", settings_counter_name[i], settings_counter[i]);
+	}
+
+	for (int i = 0; i < TM_MAX; i++) {
+		uint32_t t = (uint32_t)(k_ticks_to_us_floor64(settings_timer[i].ticks) /
+					settings_timer[i].measurements);
+		shell_print(shell_ptr, "%s: %u * %uus", settings_timer_name[i],
+			    settings_timer[i].measurements, t);
+	}
+
+	return 0;
+}
+
+static int cmd_statclear(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	memset(settings_counter, 0, sizeof(settings_counter));
+	memset(settings_timer, 0, sizeof(settings_timer));
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(settings_cmds,
 			       SHELL_CMD_ARG(list, NULL, "[<subtree>]", cmd_list, 1, 1),
 			       SHELL_CMD_ARG(read, NULL, "<name>", cmd_read, 2, 0),
 			       SHELL_CMD_ARG(write, NULL, "<name> <hex>", cmd_write, 3, 0),
 			       SHELL_CMD_ARG(delete, NULL, "<name>", cmd_delete, 2, 0),
+			       SHELL_CMD_ARG(stat, NULL, "", cmd_stat, 1, 0),
+			       SHELL_CMD_ARG(clear, NULL, "", cmd_statclear, 1, 0),
 			       SHELL_SUBCMD_SET_END);
 
 static int cmd_settings(const struct shell *shell_ptr, size_t argc, char **argv)
