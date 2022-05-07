@@ -95,6 +95,13 @@ static int settings_nvs_load(struct settings_store *cs,
 		rc1 = nvs_read(&cf->cf_nvs, name_id, &name, sizeof(name));
 		settings_timer_end(TM_NVS_KEY_READ, true);
 
+		if (rc1 > 0 && arg && arg->subtree) {
+			name[rc1] = '\0';
+			if (!settings_name_steq(name, arg->subtree, NULL)) {
+				continue;
+			}
+		}
+
 		rc2 = nvs_read(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET,
 			       &buf, sizeof(buf));
 		settings_timer_end(TM_NVS_VALUE_FIND, false);
