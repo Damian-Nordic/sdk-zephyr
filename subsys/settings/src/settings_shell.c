@@ -114,11 +114,46 @@ static int cmd_read(const struct shell *shell_ptr, size_t argc, char *argv[])
 	return 0;
 }
 
+static int cmd_write(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	int err;
+	uint8_t buffer[SETTINGS_MAX_VAL_LEN];
+	size_t buffer_len;
+
+	buffer_len = hex2bin(argv[2], strlen(argv[2]), buffer, sizeof(buffer));
+
+	if (buffer_len == 0) {
+		err = -ENOMEM;
+	} else {
+		err = settings_save_one(argv[1], buffer, buffer_len);
+	}
+
+	if (err) {
+		shell_error(shell_ptr, "Failed to write value: %d", err);
+	}
+
+	return 0;
+}
+
+static int cmd_delete(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	int err;
+
+	err = settings_delete(argv[1]);
+
+	if (err) {
+		shell_error(shell_ptr, "Failed to delete value: %d", err);
+	}
+
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(settings_cmds,
 			       SHELL_CMD_ARG(list, NULL, "[<subtree>]", cmd_list, 1, 1),
 			       SHELL_CMD_ARG(read, NULL, "<name>", cmd_read, 2, 0),
-			       SHELL_SUBCMD_SET_END
-			       );
+			       SHELL_CMD_ARG(write, NULL, "<name> <hex>", cmd_write, 3, 0),
+			       SHELL_CMD_ARG(delete, NULL, "<name>", cmd_delete, 2, 0),
+			       SHELL_SUBCMD_SET_END);
 
 static int cmd_settings(const struct shell *shell_ptr, size_t argc, char **argv)
 {
