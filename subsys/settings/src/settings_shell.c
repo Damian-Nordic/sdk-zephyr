@@ -82,7 +82,7 @@ static int settings_read_callback(const char *key,
 
 	if (num_read_bytes < 0) {
 		shell_error(params->shell_ptr, "Failed to read value: %d", (int) num_read_bytes);
-		return 0;
+		return 1;
 	}
 
 	shell_hexdump(params->shell_ptr, buffer, num_read_bytes);
@@ -91,7 +91,7 @@ static int settings_read_callback(const char *key,
 		shell_print(params->shell_ptr, "(The output has been truncated)");
 	}
 
-	return 0;
+	return 1;
 }
 
 static int cmd_read(const struct shell *shell_ptr, size_t argc, char *argv[])
