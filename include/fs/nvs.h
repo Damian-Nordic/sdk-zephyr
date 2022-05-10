@@ -165,6 +165,9 @@ ssize_t nvs_read_hist(struct nvs_fs *fs, uint16_t id, void *data, size_t len, ui
  */
 ssize_t nvs_calc_free_space(struct nvs_fs *fs);
 
+typedef bool (*idfilter)(uint16_t id);
+
+int nvs_find(struct nvs_fs *fs, idfilter filter, const void *data, void *buffer, size_t len);
 /**
  * @}
  */

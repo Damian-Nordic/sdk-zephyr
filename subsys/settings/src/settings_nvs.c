@@ -65,6 +65,11 @@ int settings_nvs_dst(struct settings_nvs *cf)
 	return 0;
 }
 
+bool nameidfilter(uint16_t id)
+{
+	return id >= NVS_NAMECNT_ID && id < NVS_NAMECNT_ID + NVS_NAME_ID_OFFSET;
+}
+
 static int settings_nvs_load(struct settings_store *cs,
 			     const struct settings_load_arg *arg)
 {
@@ -76,71 +81,60 @@ static int settings_nvs_load(struct settings_store *cs,
 	ssize_t rc1, rc2;
 	uint16_t name_id = NVS_NAMECNT_ID;
 
-	name_id = cf->last_name_id + 1;
-
 	int64_t start_ticks = k_uptime_ticks();
 
-	while (1) {
+	ret = nvs_find(&cf->cf_nvs, nameidfilter, arg->subtree, name, strlen(arg->subtree));
+	if (ret < 0) {
+		return 0;
+	}
 
-		name_id--;
-		if (name_id == NVS_NAMECNT_ID) {
-			break;
-		}
+	name_id = (uint16_t)(ret);
 
-		/* In the NVS backend, each setting item is stored in two NVS
+	/* In the NVS backend, each setting item is stored in two NVS
 		 * entries one for the setting's name and one with the
 		 * setting's value.
 		 */
-		settings_timer_start();
-		rc1 = nvs_read(&cf->cf_nvs, name_id, &name, sizeof(name));
-		settings_timer_end(TM_NVS_KEY_READ, true);
+	settings_timer_start();
+	rc1 = nvs_read(&cf->cf_nvs, name_id, &name, sizeof(name));
+	settings_timer_end(TM_NVS_KEY_READ, true);
 
-		if (rc1 > 0 && arg && arg->subtree) {
-			name[rc1] = '\0';
-			if (!settings_name_steq(name, arg->subtree, NULL)) {
-				continue;
-			}
-		}
-
-		rc2 = nvs_read(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET,
-			       &buf, sizeof(buf));
-		settings_timer_end(TM_NVS_VALUE_FIND, false);
-
-		if ((rc1 <= 0) && (rc2 <= 0)) {
-			continue;
-		}
-
-		if ((rc1 <= 0) || (rc2 <= 0)) {
-			/* Settings item is not stored correctly in the NVS.
-			 * NVS entry for its name or value is either missing
-			 * or deleted. Clean dirty entries to make space for
-			 * future settings item.
-			 */
-			if (name_id == cf->last_name_id) {
-				cf->last_name_id--;
-				nvs_write(&cf->cf_nvs, NVS_NAMECNT_ID,
-					  &cf->last_name_id, sizeof(uint16_t));
-			}
-			nvs_delete(&cf->cf_nvs, name_id);
-			nvs_delete(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET);
-			continue;
-		}
-
-		/* Found a name, this might not include a trailing \0 */
+	if (rc1 > 0 && arg && arg->subtree) {
 		name[rc1] = '\0';
-		read_fn_arg.fs = &cf->cf_nvs;
-		read_fn_arg.id = name_id + NVS_NAME_ID_OFFSET;
-
-		settings_timer_start();
-		ret = settings_call_set_handler(
-			name, rc2,
-			settings_nvs_read_fn, &read_fn_arg,
-			(void *)arg);
-		settings_timer_end(TM_NVS_VALUE_READ, false);
-		if (ret) {
-			break;
+		if (!settings_name_steq(name, arg->subtree, NULL)) {
+			return 0;
 		}
 	}
+
+	rc2 = nvs_read(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET, &buf, sizeof(buf));
+	settings_timer_end(TM_NVS_VALUE_FIND, false);
+
+	if ((rc1 <= 0) && (rc2 <= 0)) {
+		return 0;
+	}
+
+	if ((rc1 <= 0) || (rc2 <= 0)) {
+		/* Settings item is not stored correctly in the NVS.
+			* NVS entry for its name or value is either missing
+			* or deleted. Clean dirty entries to make space for
+			* future settings item.
+			*/
+		if (name_id == cf->last_name_id) {
+			cf->last_name_id--;
+			nvs_write(&cf->cf_nvs, NVS_NAMECNT_ID, &cf->last_name_id, sizeof(uint16_t));
+		}
+		nvs_delete(&cf->cf_nvs, name_id);
+		nvs_delete(&cf->cf_nvs, name_id + NVS_NAME_ID_OFFSET);
+		return 0;
+	}
+
+	/* Found a name, this might not include a trailing \0 */
+	name[rc1] = '\0';
+	read_fn_arg.fs = &cf->cf_nvs;
+	read_fn_arg.id = name_id + NVS_NAME_ID_OFFSET;
+
+	settings_timer_start();
+	ret = settings_call_set_handler(name, rc2, settings_nvs_read_fn, &read_fn_arg, (void *)arg);
+	settings_timer_end(TM_NVS_VALUE_READ, false);
 
 	settings_timer_reference = start_ticks;
 	settings_timer_end(TM_READ, false);

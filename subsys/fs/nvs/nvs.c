@@ -1102,6 +1102,44 @@ ssize_t nvs_read(struct nvs_fs *fs, uint16_t id, void *data, size_t len)
 	return rc;
 }
 
+int nvs_find(struct nvs_fs *fs, idfilter filter, const void *data, void *buffer, size_t len)
+{
+	int rc;
+	uint32_t wlk_addr;
+	struct nvs_ate wlk_ate;
+
+	wlk_addr = fs->ate_wra;
+
+	while (1) {
+		settings_counter_inc(CNT_NVS_ATE_READ);
+		rc = nvs_prev_ate(fs, &wlk_addr, &wlk_ate);
+		if (rc) {
+			goto err;
+		}
+
+		if (wlk_addr == fs->ate_wra) {
+			rc = -ENOENT;
+			goto err;
+		}
+
+		if (!filter(wlk_ate.id) || wlk_ate.len != len) {
+			continue;
+		}
+
+		rc = nvs_flash_rd(fs, (wlk_addr & ADDR_SECT_MASK) + wlk_ate.offset, buffer, len);
+		if (rc) {
+			continue;
+		}
+
+		if (memcmp(data, buffer, len) == 0) {
+			return wlk_ate.id;
+		}
+	}
+
+err:
+	return rc;
+}
+
 ssize_t nvs_calc_free_space(struct nvs_fs *fs)
 {
 
