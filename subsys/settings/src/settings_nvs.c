@@ -12,6 +12,7 @@
 #include "settings/settings_nvs.h"
 #include "settings_priv.h"
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/sys/math_extras.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(settings, CONFIG_SETTINGS_LOG_LEVEL);
@@ -55,6 +56,17 @@ static ssize_t settings_nvs_read_fn(void *back_end, void *data, size_t len)
 	}
 	return rc;
 }
+
+#ifdef CONFIG_NVS_LOOKUP_CACHE
+static size_t nvs_lookup_cache_pos(uint16_t id)
+{
+	/* Calculate bit number that distinguishes keys from values */
+	const uint16_t key_value_bit_no = (uint16_t)u32_count_trailing_zeros(NVS_NAME_ID_OFFSET);
+	const uint16_t key_value_bit = (id >> key_value_bit_no) & 1;
+
+	return ((id << 1u) + key_value_bit) % CONFIG_NVS_LOOKUP_CACHE_SIZE;
+}
+#endif
 
 int settings_nvs_src(struct settings_nvs *cf)
 {
@@ -317,6 +329,9 @@ int settings_backend_init(void)
 	default_settings_nvs.cf_nvs.sector_size = nvs_sector_size;
 	default_settings_nvs.cf_nvs.sector_count = cnt;
 	default_settings_nvs.cf_nvs.offset = fa->fa_off;
+#ifdef CONFIG_NVS_LOOKUP_CACHE
+	default_settings_nvs.cf_nvs.lookup_cache_pos = nvs_lookup_cache_pos;
+#endif
 	default_settings_nvs.flash_dev = fa->fa_dev;
 
 	rc = settings_nvs_backend_init(&default_settings_nvs);

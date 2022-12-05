@@ -44,6 +44,8 @@ extern "C" {
  * @param nvs_lock Mutex
  * @param flash_device Flash Device runtime structure
  * @param flash_parameters Flash memory parameters structure
+ * @param lookup_cache_pos Function to calculate position in the ATE lookup cache
+ * @param lookup_cache Lookup cache to speed up ATE lookup
  */
 struct nvs_fs {
 	off_t offset;
@@ -56,6 +58,7 @@ struct nvs_fs {
 	const struct device *flash_device;
 	const struct flash_parameters *flash_parameters;
 #if CONFIG_NVS_LOOKUP_CACHE
+	size_t (*lookup_cache_pos)(uint16_t id);
 	uint32_t lookup_cache[CONFIG_NVS_LOOKUP_CACHE_SIZE];
 #endif
 };
