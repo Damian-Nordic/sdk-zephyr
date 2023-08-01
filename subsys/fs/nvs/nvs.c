@@ -21,23 +21,20 @@ static int nvs_ate_valid(struct nvs_fs *fs, const struct nvs_ate *entry);
 
 #ifdef CONFIG_NVS_LOOKUP_CACHE
 
-static inline size_t nvs_lookup_cache_pos(uint16_t id)
+static inline uint32_t *nvs_lookup_cache_entry(struct nvs_fs *fs, uint16_t id)
 {
-	size_t pos;
+	uint16_t hash;
 
-#if CONFIG_NVS_LOOKUP_CACHE_SIZE <= (UINT8_MAX + 1)
-	/*
-	 * CRC8-CCITT is used for ATE checksums and it also acts well as a hash
-	 * function, so it can be a good choice from the code size perspective.
-	 * However, other hash functions can be used as well if proved better
-	 * performance.
-	 */
-	pos = crc8_ccitt(CRC8_CCITT_INITIAL_VALUE, &id, sizeof(id));
-#else
-	pos = crc16_ccitt(0xffff, (const uint8_t *)&id, sizeof(id));
-#endif
+	/* 16-bit integer hash function found by https://github.com/skeeto/hash-prospector. */
+	hash = id;
+	hash ^= hash >> 8;
+	hash *= 0x88b5U;
+	hash ^= hash >> 7;
+	hash *= 0xdb2dU;
+	hash ^= hash >> 9;
 
-	return pos % CONFIG_NVS_LOOKUP_CACHE_SIZE;
+	return &fs->lookup_cache[hash % CONFIG_NVS_LOOKUP_CACHE_SIZE];
+
 }
 
 static int nvs_lookup_cache_rebuild(struct nvs_fs *fs)
@@ -59,7 +56,7 @@ static int nvs_lookup_cache_rebuild(struct nvs_fs *fs)
 			return rc;
 		}
 
-		cache_entry = &fs->lookup_cache[nvs_lookup_cache_pos(ate.id)];
+		cache_entry = nvs_lookup_cache_entry(fs, ate.id);
 
 		if (ate.id != 0xFFFF && *cache_entry == NVS_LOOKUP_CACHE_NO_ADDR &&
 		    nvs_ate_valid(fs, &ate)) {
@@ -170,7 +167,7 @@ static int nvs_flash_ate_wrt(struct nvs_fs *fs, const struct nvs_ate *entry)
 #ifdef CONFIG_NVS_LOOKUP_CACHE
 	/* 0xFFFF is a special-purpose identifier. Exclude it from the cache */
 	if (entry->id != 0xFFFF) {
-		fs->lookup_cache[nvs_lookup_cache_pos(entry->id)] = fs->ate_wra;
+		*nvs_lookup_cache_entry(fs, entry->id) = fs->ate_wra;
 	}
 #endif
 	fs->ate_wra -= nvs_al_size(fs, sizeof(struct nvs_ate));
@@ -632,7 +629,7 @@ static int nvs_gc(struct nvs_fs *fs)
 		}
 
 #ifdef CONFIG_NVS_LOOKUP_CACHE
-		wlk_addr = fs->lookup_cache[nvs_lookup_cache_pos(gc_ate.id)];
+		wlk_addr = *nvs_lookup_cache_entry(fs, gc_ate.id);
 
 		if (wlk_addr == NVS_LOOKUP_CACHE_NO_ADDR) {
 			wlk_addr = fs->ate_wra;
@@ -1037,7 +1034,7 @@ ssize_t nvs_write(struct nvs_fs *fs, uint16_t id, const void *data, size_t len)
 
 	/* find latest entry with same id */
 #ifdef CONFIG_NVS_LOOKUP_CACHE
-	wlk_addr = fs->lookup_cache[nvs_lookup_cache_pos(id)];
+	wlk_addr = *nvs_lookup_cache_entry(fs, id);
 
 	if (wlk_addr == NVS_LOOKUP_CACHE_NO_ADDR) {
 		goto no_cached_entry;
@@ -1167,7 +1164,7 @@ ssize_t nvs_read_hist(struct nvs_fs *fs, uint16_t id, void *data, size_t len,
 	cnt_his = 0U;
 
 #ifdef CONFIG_NVS_LOOKUP_CACHE
-	wlk_addr = fs->lookup_cache[nvs_lookup_cache_pos(id)];
+	wlk_addr = *nvs_lookup_cache_entry(fs, id);
 
 	if (wlk_addr == NVS_LOOKUP_CACHE_NO_ADDR) {
 		rc = -ENOENT;
