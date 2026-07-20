@@ -574,7 +574,7 @@ static bool nrf5_tx_at(struct nrf5_802154_data *nrf5_radio, struct net_pkt *pkt,
 	 * expects a timestamp pointing to start of SHR.
 	 */
 	uint64_t tx_at = nrf_802154_timestamp_phr_to_shr_convert(
-		net_pkt_timestamp_ns(pkt) / NSEC_PER_USEC);
+		net_pkt_timestamp_ns(pkt) / NSEC_PER_USEC, nrf_802154_phy_get());
 
 	nrf_802154_tx_error_t result = nrf_802154_transmit_raw_at(payload, tx_at, &metadata);
 
@@ -1018,7 +1018,8 @@ static int nrf5_configure(const struct device *dev,
 		{
 			nrf_802154_csl_writer_anchor_time_set(
 				nrf_802154_timestamp_phr_to_mhr_convert(config->expected_rx_time /
-									NSEC_PER_USEC));
+										NSEC_PER_USEC,
+									nrf_802154_phy_get()));
 		}
 	} break;
 
@@ -1067,7 +1068,7 @@ static int nrf5_configure(const struct device *dev,
 
 	case IEEE802154_OPENTHREAD_CONFIG_EXPECTED_TX_TIME:
 		nrf_802154_cst_writer_anchor_time_set(nrf_802154_timestamp_phr_to_mhr_convert(
-			config->expected_tx_time / NSEC_PER_USEC));
+			config->expected_tx_time / NSEC_PER_USEC, nrf_802154_phy_get()));
 		break;
 #endif /* CONFIG_IEEE802154_NRF5_CST_ENDPOINT */
 
@@ -1127,8 +1128,8 @@ void nrf_802154_received_timestamp_raw(uint8_t *data, int8_t power, uint8_t lqi,
 
 #if defined(CONFIG_NET_PKT_TIMESTAMP)
 		if (time != NRF_802154_NO_TIMESTAMP) {
-			nrf5_data.rx_frames[i].time =
-				nrf_802154_timestamp_end_to_phr_convert(time, data[0]);
+			nrf5_data.rx_frames[i].time = nrf_802154_timestamp_end_to_phr_convert(
+				time, data[0], nrf_802154_phy_get());
 		} else {
 			nrf5_data.rx_frames[i].time = 0;
 		}
@@ -1225,7 +1226,8 @@ void nrf_802154_transmitted_raw(uint8_t *frame,
 			nrf5_data.ack_frame.time = NRF_802154_NO_TIMESTAMP;
 		} else {
 			nrf5_data.ack_frame.time = nrf_802154_timestamp_end_to_phr_convert(
-				metadata->data.transmitted.time, nrf5_data.ack_frame.psdu[0]);
+				metadata->data.transmitted.time, nrf5_data.ack_frame.psdu[0],
+				nrf_802154_phy_get());
 		}
 #endif
 	}
